@@ -120,3 +120,40 @@ print(one_hot_encoded)
 ```{r}
 ncol(x_train)
 ```
+
+```{r}
+# Ensure 'attack_detected' is a factor in both train and test sets
+train_data$attack_detected <- as.factor(train_data$attack_detected)
+test_data$attack_detected <- as.factor(test_data$attack_detected)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Decision Tree
+print("\nTraining Decision Tree...")
+tree_model <- train(attack_detected ~ .,
+                    data = train_data,
+                    method = "rpart")
+tree_predictions <- predict(tree_model, newdata = test_data)
+print("Decision Tree Evaluation:")
+print(confusionMatrix(tree_predictions, test_data$attack_detected))
+
+# Random Forest
+print("\nTraining Random Forest...")
+rf_model <- train(attack_detected ~ .,
+                  data = train_data,
+                  method = "rf")
+rf_predictions <- predict(rf_model, newdata = test_data)
+print("Random Forest Evaluation:")
+print(confusionMatrix(rf_predictions, test_data$attack_detected))
+
+# Logistic Regression
+print("\nTraining Logistic Regression...")
+logistic_model <- train(attack_detected ~ .,
+                       data = train_data,
+                       method = "glm",
+                       family = "binomial")
+logistic_predictions <- predict(logistic_model, newdata = test_data)
+print("Logistic Regression Evaluation:")
+print(confusionMatrix(logistic_predictions, test_data$attack_detected))
+```
