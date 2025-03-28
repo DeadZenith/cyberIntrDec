@@ -422,3 +422,7 @@ ggplot(xgb_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
 ggsave("images/cm_xgboost_visual_from_output.pdf", width = 6, height = 5)
 
 ```
+
+```{r}
+just some background stuff
+```
