@@ -1,0 +1,122 @@
+---
+title: "test"
+format: html
+editor: visual
+---
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(caret)
+library(fastDummies)
+
+# Set the path to your dataset if it's not in the working directory
+file_path <- "C:\\Users\\Latiq Pratt\\Downloads\\cyberStuff\\cybersecurity_intrusion_data.csv" # Replace with your actual file path
+
+# Load dataset
+cyber_data <- read.csv(file_path)
+
+# Data Preprocessing
+cyber_data <- cyber_data %>% select(-session_id)  # Drop session_id column
+cyber_data$attack_detected <- as.factor(cyber_data$attack_detected)  # Convert target variable to factor
+
+# One-Hot Encode Categorical Variables
+cyber_data <- cyber_data %>%
+  mutate(across(c(protocol_type, encryption_used, browser_type),
+                ~ as.factor(.))) %>%
+  dummy_cols(select_columns = c("protocol_type", "encryption_used", "browser_type"), remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+
+# Normalize Numerical Features
+num_cols <- c("network_packet_size", "login_attempts", "session_duration", "ip_reputation_score", "failed_logins", "unusual_time_access")
+cyber_data[num_cols] <- scale(cyber_data[num_cols])
+
+# Train-Test Split
+set.seed(123)
+trainIndex <- createDataPartition(cyber_data$attack_detected, p = 0.8, list = FALSE)
+train_data <- cyber_data[trainIndex, ]
+test_data <- cyber_data[-trainIndex, ]
+
+# Prepare Data for Keras
+x_train <- as.matrix(select(train_data, -attack_detected))
+y_train <- keras::to_categorical(as.numeric(train_data$attack_detected) - 1)
+x_test <- as.matrix(select(test_data, -attack_detected))
+y_test <- keras::to_categorical(as.numeric(test_data$attack_detected) - 1)
+
+# Define the Neural Network Model
+model <- keras_model_sequential() %>%
+  layer_dense(units = 16, activation = 'relu', input_shape = ncol(x_train)) %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 8, activation = 'relu') %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 2, activation = 'softmax') # Output layer with 2 units for binary classification
+
+# Compile the Model
+model %>% compile(
+  optimizer = 'adam',
+  loss = 'categorical_crossentropy',
+  metrics = c('accuracy')
+)
+
+# Train the Model
+history <- model %>% fit(
+  x = x_train,
+  y = y_train,
+  epochs = 30,
+  batch_size = 32,
+  validation_split = 0.2 # Use 20% of training data for validation
+)
+
+# Evaluate the Model on Test Data
+loss_and_metrics <- model %>% evaluate(x_test, y_test)
+cat('Test Loss:', loss_and_metrics[[1]], '\n')
+cat('Test Accuracy:', loss_and_metrics[[2]], '\n')
+
+# Make Predictions on Test Data
+predictions <- model %>% predict(x_test)
+predicted_classes <- ifelse(predictions[, 2] > 0.5, 1, 0) # Assuming the second column represents the probability of attack
+
+# Convert test labels back to original format for comparison
+actual_classes <- as.numeric(test_data$attack_detected) - 1
+
+# Create a Confusion Matrix
+confusionMatrix(factor(predicted_classes), factor(actual_classes))
+
+plot(history)
+
+# Visualize the Neural Network
+# keras$utils$plot_model(model, to_file = "neural_network_plot.png", show_shapes = TRUE, show_layer_names = TRUE)
+```
+
+```{r}
+install.packages("keras")
+library(keras)
+install_keras() # Follow the prompts to install TensorFlow (recommended)
+```
+
+```{r}
+example_vector <- c(0, 1, 0, 1, 0)
+one_hot_encoded <- keras::to_categorical(example_vector)
+print(one_hot_encoded)
+```
+
+```{r}
+library(keras)
+```
+
+```{r}
+remove.packages("keras")
+install.packages("keras")
+library(keras)
+install_keras()
+
+```
+
+```{r}
+example_vector <- c(0, 1, 0, 1, 0)
+one_hot_encoded <- keras::to_categorical(example_vector)
+print(one_hot_encoded)
+```
+
+```{r}
+ncol(x_train)
+```
