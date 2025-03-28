@@ -14,7 +14,7 @@ library(fastDummies)
 file_path <- "C:\\Users\\Latiq Pratt\\Downloads\\cyberStuff\\cybersecurity_intrusion_data.csv" # Replace with your actual file path
 
 # Load dataset
-cyber_data <- read.csv(file_path)
+cyber_data <- read.csv(file_path) 
 
 # Data Preprocessing
 cyber_data <- cyber_data %>% select(-session_id)  # Drop session_id column
@@ -44,9 +44,9 @@ y_test <- keras::to_categorical(as.numeric(test_data$attack_detected) - 1)
 
 # Define the Neural Network Model
 model <- keras_model_sequential() %>%
-  layer_dense(units = 16, activation = 'relu', input_shape = ncol(x_train)) %>%
+  layer_dense(units = 64, activation = 'relu', input_shape = ncol(x_train)) %>%
   layer_dropout(rate = 0.2) %>%
-  layer_dense(units = 8, activation = 'relu') %>%
+  layer_dense(units = 32, activation = 'relu') %>%
   layer_dropout(rate = 0.2) %>%
   layer_dense(units = 2, activation = 'softmax') # Output layer with 2 units for binary classification
 
@@ -84,7 +84,7 @@ confusionMatrix(factor(predicted_classes), factor(actual_classes))
 plot(history)
 
 # Visualize the Neural Network
-# keras$utils$plot_model(model, to_file = "neural_network_plot.png", show_shapes = TRUE, show_layer_names = TRUE)
+#keras$utils$plot_model(model, to_file = "neural_network_plot.png", show_shapes = TRUE, show_layer_names = TRUE)
 ```
 
 ```{r}
@@ -129,11 +129,17 @@ test_data$attack_detected <- as.factor(test_data$attack_detected)
 # Set seed for reproducibility
 set.seed(123)
 
+# Define trainControl with verboseIter = TRUE
+train_control <- trainControl(method = "cv", # You can choose different resampling methods
+                               number = 10, # For example, 10-fold cross-validation
+                               verboseIter = TRUE)
+
 # Decision Tree
 print("\nTraining Decision Tree...")
 tree_model <- train(attack_detected ~ .,
                     data = train_data,
-                    method = "rpart")
+                    method = "rpart",
+                    trControl = train_control)
 tree_predictions <- predict(tree_model, newdata = test_data)
 print("Decision Tree Evaluation:")
 print(confusionMatrix(tree_predictions, test_data$attack_detected))
@@ -142,7 +148,8 @@ print(confusionMatrix(tree_predictions, test_data$attack_detected))
 print("\nTraining Random Forest...")
 rf_model <- train(attack_detected ~ .,
                   data = train_data,
-                  method = "rf")
+                  method = "rf",
+                  trControl = train_control)
 rf_predictions <- predict(rf_model, newdata = test_data)
 print("Random Forest Evaluation:")
 print(confusionMatrix(rf_predictions, test_data$attack_detected))
@@ -152,8 +159,266 @@ print("\nTraining Logistic Regression...")
 logistic_model <- train(attack_detected ~ .,
                        data = train_data,
                        method = "glm",
-                       family = "binomial")
+                       family = "binomial",
+                       trControl = train_control)
 logistic_predictions <- predict(logistic_model, newdata = test_data)
 print("Logistic Regression Evaluation:")
 print(confusionMatrix(logistic_predictions, test_data$attack_detected))
+```
+
+```{r}
+# Load necessary library (caret should already be loaded)
+library(xgboost) # Ensure xgboost library is installed
+
+
+# --------------------- XGBoost ---------------------
+print("\nTraining XGBoost...")
+xgb_model <- train(attack_detected ~ .,
+                   data = train_data,
+                   method = "xgbTree") # Using tree-based XGBoost
+
+# Make predictions on the test set
+xgb_predictions <- predict(xgb_model, newdata = test_data)
+
+# Evaluate the model
+print("XGBoost Evaluation:")
+confusionMatrix(xgb_predictions, test_data$attack_detected)
+```
+
+```{r}
+# Load necessary libraries
+library(xtable)
+library(ggplot2)
+
+# Set the path to your dataset
+file_path <- "C:\\Users\\Latiq Pratt\\Downloads\\cyberStuff\\cybersecurity_intrusion_data.csv" # Replace with your actual file path
+
+# Load dataset
+cyber_data_raw <- read.csv(file_path)
+
+# --- Summary Statistics for Numerical Features ---
+numerical_summary <- cyber_data_raw %>%
+  select(network_packet_size, login_attempts, session_duration, ip_reputation_score, failed_logins, unusual_time_access) %>%
+  summary()
+
+# Convert summary statistics to LaTeX table
+latex_summary_table <- xtable(numerical_summary, caption = "Summary Statistics of Numerical Features", label = "tab:numerical_summary")
+print(latex_summary_table, type = "latex", caption.placement = "top", booktabs = TRUE)
+
+# --- Distribution of Target Variable (attack_detected) ---
+attack_detected_plot <- ggplot(cyber_data_raw, aes(x = attack_detected, fill = attack_detected)) +
+  geom_bar() +
+  scale_fill_discrete(labels = c("No Attack", "Attack")) +
+  labs(title = "Distribution of Attack Detected", x = "Attack Detected", y = "Count", fill = "Attack Status") +
+  theme_minimal()
+ggsave("attack_detected_distribution.svg", plot = attack_detected_plot, width = 6, height = 4)
+
+# --- Distribution of Categorical Features ---
+# Protocol Type
+protocol_type_plot <- ggplot(cyber_data_raw, aes(x = protocol_type, fill = protocol_type)) +
+  geom_bar() +
+  labs(title = "Distribution of Protocol Type", x = "Protocol Type", y = "Count", fill = "Protocol Type") +
+  theme_minimal()
+ggsave("protocol_type_distribution.svg", plot = protocol_type_plot, width = 6, height = 4)
+
+# Encryption Used
+encryption_used_plot <- ggplot(cyber_data_raw, aes(x = encryption_used, fill = encryption_used)) +
+  geom_bar() +
+  labs(title = "Distribution of Encryption Used", x = "Encryption Used", y = "Count", fill = "Encryption Used") +
+  theme_minimal()
+ggsave("encryption_used_distribution.svg", plot = encryption_used_plot, width = 6, height = 4)
+
+# Browser Type
+browser_type_plot <- ggplot(cyber_data_raw, aes(x = browser_type, fill = browser_type)) +
+  geom_bar() +
+  labs(title = "Distribution of Browser Type", x = "Browser Type", y = "Count", fill = "Browser Type") +
+  theme_minimal()
+ggsave("browser_type_distribution.svg", plot = browser_type_plot, width = 6, height = 4)
+```
+
+```{r}
+getwd()
+
+```
+
+```{r}
+
+# Convert attack_detected back to a factor if it's not already
+cyber_data$attack_detected <- as.factor(cyber_data$attack_detected)
+
+# Select a few numerical features to visualize (you can choose others)
+numerical_features <- c("network_packet_size", "login_attempts", "session_duration", "ip_reputation_score", "failed_logins", "unusual_time_access")
+
+# Create box plots
+for (feature in numerical_features) {
+  plot <- ggplot(cyber_data, aes(x = attack_detected, y = .data[[feature]], fill = attack_detected)) +
+    geom_boxplot() +
+    labs(title = paste("Box Plot of", feature, "by Attack Detected"),
+         x = "Attack Detected",
+         y = feature,
+         fill = "Attack Status") +
+    theme_minimal()
+  ggsave(paste0("boxplot_", gsub("[[:space:]]", "_", feature), ".svg"), plot = plot, width = 6, height = 4)
+}
+
+# Create violin plots (alternative to box plots)
+for (feature in numerical_features) {
+  plot <- ggplot(cyber_data, aes(x = attack_detected, y = .data[[feature]], fill = attack_detected)) +
+    geom_violin() +
+    labs(title = paste("Violin Plot of", feature, "by Attack Detected"),
+         x = "Attack Detected",
+         y = feature,
+         fill = "Attack Status") +
+    theme_minimal()
+  ggsave(paste0("violinplot_", gsub("[[:space:]]", "_", feature), ".svg"), plot = plot, width = 6, height = 4)
+}
+```
+
+```{r}
+
+# Convert attack_detected to factor
+cyber_data_raw$attack_detected <- as.factor(cyber_data_raw$attack_detected)
+
+# Protocol Type
+protocol_plot <- ggplot(cyber_data_raw, aes(x = protocol_type, fill = attack_detected)) +
+  geom_bar(position = "fill") # Use "fill" for proportions, or "dodge" for counts side-by-side
+  labs(title = "Protocol Type vs. Attack Detected",
+       x = "Protocol Type",
+       y = "Proportion", # Or "Count" if position = "dodge"
+       fill = "Attack Detected") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("protocol_type_vs_attack.svg", plot = protocol_plot, width = 6, height = 4)
+
+# Encryption Used
+encryption_plot <- ggplot(cyber_data_raw, aes(x = encryption_used, fill = attack_detected)) +
+  geom_bar(position = "fill")
+  labs(title = "Encryption Used vs. Attack Detected",
+       x = "Encryption Used",
+       y = "Proportion",
+       fill = "Attack Detected") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("encryption_used_vs_attack.svg", plot = encryption_plot, width = 6, height = 4)
+
+# Browser Type
+browser_plot <- ggplot(cyber_data_raw, aes(x = browser_type, fill = attack_detected)) +
+  geom_bar(position = "fill")
+  labs(title = "Browser Type vs. Attack Detected",
+       x = "Browser Type",
+       y = "Proportion",
+       fill = "Attack Detected") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("browser_type_vs_attack.svg", plot = browser_plot, width = 6, height = 4)
+```
+
+```{r}
+# Your existing code (up to the plot command)
+# ...
+
+# Save the training history plot as a PNG
+pdf("training_history.pdf") # Adjust width and height as needed (in pixels)
+plot(history)
+dev.off()
+
+# You will find the "training_history.png" file in your current working directory.
+```
+
+```{r}
+
+```
+
+```{r}
+
+# --- Neural Network Confusion Matrix Data ---
+nn_cm_data <- data.frame(
+  Predicted = factor(c("0", "1", "0", "1"), levels = c("0", "1")),
+  Actual = factor(c("0", "0", "1", "1"), levels = c("0", "1")),
+  Freq = c(1031, 23, 199, 653)
+)
+
+# Create heatmap for Neural Network
+ggplot(nn_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1) +
+  scale_fill_gradient(low = "#88CCEE", high = "#117733") +
+  theme_minimal() +
+  labs(title = "Confusion Matrix - Neural Network", fill = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+ggsave("images/cm_neural_network_visual_from_output.pdf", width = 6, height = 5)
+
+# --- Decision Tree Confusion Matrix Data ---
+dt_cm_data <- data.frame(
+  Predicted = factor(c("0", "1", "0", "1"), levels = c("0", "1")),
+  Actual = factor(c("0", "0", "1", "1"), levels = c("0", "1")),
+  Freq = c(1054, 0, 373, 479)
+)
+
+# Create heatmap for Decision Tree
+ggplot(dt_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1) +
+  scale_fill_gradient(low = "#88CCEE", high = "#117733") +
+  theme_minimal() +
+  labs(title = "Confusion Matrix - Decision Tree", fill = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+ggsave("images/cm_decision_tree_visual_from_output.pdf", width = 6, height = 5)
+
+# --- Random Forest Confusion Matrix Data ---
+rf_cm_data <- data.frame(
+  Predicted = factor(c("0", "1", "0", "1"), levels = c("0", "1")),
+  Actual = factor(c("0", "0", "1", "1"), levels = c("0", "1")),
+  Freq = c(1050, 4, 198, 654)
+)
+
+# Create heatmap for Random Forest
+ggplot(rf_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1) +
+  scale_fill_gradient(low = "#88CCEE", high = "#117733") +
+  theme_minimal() +
+  labs(title = "Confusion Matrix - Random Forest", fill = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+ggsave("images/cm_random_forest_visual_from_output.pdf", width = 6, height = 5)
+
+# --- Logistic Regression Confusion Matrix Data ---
+lr_cm_data <- data.frame(
+  Predicted = factor(c("0", "1", "0", "1"), levels = c("0", "1")),
+  Actual = factor(c("0", "0", "1", "1"), levels = c("0", "1")),
+  Freq = c(836, 218, 282, 570)
+)
+
+# Create heatmap for Logistic Regression
+ggplot(lr_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1) +
+  scale_fill_gradient(low = "#88CCEE", high = "#117733") +
+  theme_minimal() +
+  labs(title = "Confusion Matrix - Logistic Regression", fill = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+ggsave("images/cm_logistic_regression_visual_from_output.pdf", width = 6, height = 5)
+
+# --- XGBoost Confusion Matrix Data ---
+xgb_cm_data <- data.frame(
+  Predicted = factor(c("0", "1", "0", "1"), levels = c("0", "1")),
+  Actual = factor(c("0", "0", "1", "1"), levels = c("0", "1")),
+  Freq = c(1051, 3, 200, 652)
+)
+
+# Create heatmap for XGBoost
+ggplot(xgb_cm_data, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), vjust = 1) +
+  scale_fill_gradient(low = "#88CCEE", high = "#117733") +
+  theme_minimal() +
+  labs(title = "Confusion Matrix - XGBoost", fill = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+ggsave("images/cm_xgboost_visual_from_output.pdf", width = 6, height = 5)
+
 ```
