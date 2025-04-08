@@ -44,9 +44,9 @@ y_test <- keras::to_categorical(as.numeric(test_data$attack_detected) - 1)
 
 # Define the Neural Network Model
 model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = 'relu', input_shape = ncol(x_train)) %>%
+  layer_dense(units = 32, activation = 'relu', input_shape = ncol(x_train)) %>%
   layer_dropout(rate = 0.2) %>%
-  layer_dense(units = 32, activation = 'relu') %>%
+  layer_dense(units = 16, activation = 'relu') %>%
   layer_dropout(rate = 0.2) %>%
   layer_dense(units = 2, activation = 'softmax') # Output layer with 2 units for binary classification
 
@@ -61,7 +61,7 @@ model %>% compile(
 history <- model %>% fit(
   x = x_train,
   y = y_train,
-  epochs = 30,
+  epochs = 20,
   batch_size = 32,
   validation_split = 0.2 # Use 20% of training data for validation
 )
